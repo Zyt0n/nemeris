@@ -1,0 +1,2282 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>NEMERIS — Beweise deinen Wert</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Cinzel:wght@400;700&display=swap');
+
+:root {
+--bg: #0a0a0f;
+--panel: #0e0e16;
+--border: #1a1a2e;
+--red: #c0392b;
+--red-dim: #7a1f15;
+--gold: #c9a84c;
+--gold-dim: #6b5520;
+--text: #ffffff;
+--text-dim: #8a8878;
+--green: #2ecc71;
+--blue: #3498db;
+--pixel: 3px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+background: var(--bg);
+color: var(--text);
+font-family: 'Press Start 2P', monospace;
+min-height: 100vh;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+overflow: hidden;
+}
+
+/* Scanline overlay */
+body::before {
+content: '';
+position: fixed;
+inset: 0;
+background: repeating-linear-gradient(
+0deg,
+transparent,
+transparent 2px,
+rgba(0,0,0,0.15) 2px,
+rgba(0,0,0,0.15) 4px
+);
+pointer-events: none;
+z-index: 100;
+}
+
+/* ── SCREENS ── */
+.screen { display: none; width: 100%; max-width: 900px; padding: 20px; }
+.screen.active { display: flex; flex-direction: column; align-items: center; }
+
+/* ── MENU SCREEN ── */
+#menu {
+gap: 32px;
+text-align: center;
+}
+
+.title-block {
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 8px;
+}
+
+.title-sub {
+font-family: 'Press Start 2P', monospace;
+font-size: 11px;
+letter-spacing: 6px;
+color: var(--red);
+text-transform: uppercase;
+}
+
+.title-main {
+font-family: 'Cinzel', serif;
+font-size: clamp(28px, 6vw, 56px);
+color: var(--gold);
+letter-spacing: 4px;
+text-shadow: 0 0 40px rgba(201,168,76,0.3);
+}
+
+.quest-name {
+font-size: 13px;
+letter-spacing: 3px;
+color: var(--text-dim);
+margin-top: 4px;
+}
+
+.divider {
+width: 200px;
+height: 1px;
+background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+}
+
+.quest-desc {
+max-width: 480px;
+font-size: 13px;
+line-height: 1.9;
+color: var(--text-dim);
+text-align: center;
+padding: 16px 24px;
+border: 1px solid var(--border);
+background: rgba(201,168,76,0.02);
+position: relative;
+}
+
+.quest-desc::before {
+content: '[ QUEST ]';
+position: absolute;
+top: -8px;
+left: 50%;
+transform: translateX(-50%);
+background: var(--bg);
+padding: 0 8px;
+font-size: 10px;
+color: var(--gold-dim);
+letter-spacing: 2px;
+}
+
+.mode-select {
+display: flex;
+gap: 16px;
+flex-wrap: wrap;
+justify-content: center;
+}
+
+.mode-btn {
+background: transparent;
+border: 1px solid var(--border);
+color: var(--text);
+font-family: 'Press Start 2P', monospace;
+font-size: 12px;
+padding: 16px 28px;
+cursor: pointer;
+transition: all 0.2s;
+position: relative;
+letter-spacing: 2px;
+text-transform: uppercase;
+}
+
+.mode-btn::after {
+content: '';
+position: absolute;
+inset: 0;
+background: var(--red);
+opacity: 0;
+transition: opacity 0.2s;
+}
+
+.mode-btn:hover {
+border-color: var(--red);
+color: #fff;
+box-shadow: 0 0 20px rgba(192,57,43,0.3);
+}
+
+.mode-btn .mode-time {
+display: block;
+font-size: 22px;
+color: var(--gold);
+margin-bottom: 4px;
+}
+
+.mode-btn .mode-label {
+display: block;
+font-size: 10px;
+color: var(--text-dim);
+margin-top: 4px;
+}
+
+.warning-text {
+font-size: 11px;
+color: var(--red-dim);
+letter-spacing: 1px;
+text-align: center;
+}
+
+/* ── GAME SCREEN ── */
+#game {
+gap: 12px;
+align-items: stretch;
+}
+
+.hud {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 8px 12px;
+border: 1px solid var(--border);
+background: var(--panel);
+flex-wrap: wrap;
+gap: 8px;
+}
+
+.hud-block {
+display: flex;
+flex-direction: column;
+gap: 2px;
+}
+
+.hud-label {
+font-size: 9px;
+color: var(--text-dim);
+letter-spacing: 2px;
+text-transform: uppercase;
+}
+
+.hud-value {
+font-size: 18px;
+color: var(--gold);
+}
+
+.hp-bar {
+display: flex;
+gap: 3px;
+}
+
+.hp-pip {
+width: 14px;
+height: 14px;
+background: var(--red);
+transition: background 0.3s;
+image-rendering: pixelated;
+clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+.hp-pip.empty { background: var(--border); }
+
+#timer-display {
+font-size: 28px;
+color: var(--text);
+transition: color 0.3s;
+font-variant-numeric: tabular-nums;
+}
+
+#timer-display.urgent { color: var(--red); animation: pulse 0.5s infinite; }
+
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.canvas-wrap {
+position: relative;
+border: 1px solid var(--border);
+background: #050508;
+overflow: hidden;
+}
+
+canvas {
+display: block;
+image-rendering: pixelated;
+width: 100%;
+}
+
+.canvas-wrap::after {
+content: '';
+position: absolute;
+inset: 0;
+border: 2px solid transparent;
+pointer-events: none;
+transition: border-color 0.3s;
+}
+
+.canvas-wrap.danger::after { border-color: rgba(192,57,43,0.5); }
+
+.log-panel {
+border: 1px solid var(--border);
+background: var(--panel);
+padding: 8px 12px;
+height: 80px;
+overflow-y: auto;
+font-size: 11px;
+line-height: 1.7;
+scrollbar-width: thin;
+scrollbar-color: var(--border) transparent;
+}
+
+.log-entry { color: var(--text-dim); }
+.log-entry.kill { color: var(--red); }
+.log-entry.exp { color: var(--gold); }
+.log-entry.warn { color: #e67e22; }
+.log-entry.good { color: var(--green); }
+
+.controls-hint {
+font-size: 10px;
+color: var(--text-dim);
+letter-spacing: 1px;
+text-align: center;
+}
+
+/* ── TOUCH CONTROLS ── */
+/* Portrait: small joystick below canvas */
+#touch-controls { display: none; }
+
+@media (pointer: coarse) {
+canvas { touch-action: none; }
+.controls-hint { display: none; }
+}
+
+/* Touch hint overlay — shown briefly at game start on touch devices */
+#touch-hint {
+display: none;
+position: absolute;
+inset: 0;
+z-index: 30;
+pointer-events: none;
+}
+#touch-hint .th-left {
+position: absolute;
+left: 0; top: 0; width: 50%; height: 100%;
+display: flex; align-items: center; justify-content: center;
+flex-direction: column; gap: 8px;
+}
+#touch-hint .th-right {
+position: absolute;
+right: 0; top: 0; width: 50%; height: 100%;
+display: flex; align-items: center; justify-content: center;
+flex-direction: column; gap: 8px;
+}
+#touch-hint .th-icon {
+font-size: 32px; opacity: 0.5;
+}
+#touch-hint .th-label {
+font-family: 'Press Start 2P', monospace;
+font-size: 9px;
+color: rgba(255,255,255,0.4);
+letter-spacing: 1px;
+text-align: center;
+}
+#touch-hint .th-divider {
+position: absolute;
+left: 50%; top: 10%; width: 1px; height: 80%;
+background: rgba(255,255,255,0.08);
+}
+
+/* Joystick visual that follows finger */
+#joy-visual {
+display: none;
+position: absolute;
+width: 80px; height: 80px;
+margin-left: -40px; margin-top: -40px;
+border-radius: 50%;
+border: 2px solid rgba(201,168,76,0.3);
+pointer-events: none;
+z-index: 25;
+}
+#joy-knob {
+position: absolute;
+width: 32px; height: 32px;
+border-radius: 50%;
+background: rgba(201,168,76,0.25);
+top: 50%; left: 50%;
+transform: translate(-50%,-50%);
+pointer-events: none;
+}
+
+/* ── LANDSCAPE FULLSCREEN MODE ── */
+@media (pointer: coarse) and (orientation: landscape) {
+#rotate-hint { display: none !important; }
+
+html, body { width: 100%; height: 100%; overflow: hidden; justify-content: flex-start; align-items: flex-start; }
+
+#game {
+position: fixed !important;
+inset: 0;
+width: 100vw !important;
+height: 100vh !important;
+max-width: none !important;
+padding: 0 !important;
+gap: 0 !important;
+display: flex !important;
+flex-direction: column;
+align-items: stretch;
+}
+
+.hud {
+position: relative; z-index: 10;
+padding: 4px 12px;
+background: rgba(10,10,15,0.85);
+flex-shrink: 0;
+}
+.hud-label { font-size: 8px; }
+.hud-value { font-size: 13px; }
+#timer-display { font-size: 18px; }
+.hp-pip { width: 10px; height: 10px; }
+
+.canvas-wrap {
+flex: 1; position: relative; border: none !important;
+}
+.canvas-wrap canvas { width: 100% !important; height: 100% !important; display: block; }
+
+.log-panel { display: none !important; }
+.controls-hint { display: none !important; }
+#touch-controls { display: none !important; }
+}
+
+/* Portrait nudge */
+#rotate-hint {
+display: none;
+position: fixed;
+bottom: 12px;
+left: 50%;
+transform: translateX(-50%);
+background: rgba(10,10,15,0.9);
+border: 1px solid var(--gold-dim);
+color: var(--text-dim);
+font-size: 10px;
+letter-spacing: 2px;
+padding: 6px 14px;
+z-index: 200;
+pointer-events: none;
+white-space: nowrap;
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+#rotate-hint { display: block; }
+}
+
+/* Endscreen and menu always on top in landscape */
+@media (pointer: coarse) and (orientation: landscape) {
+#endscreen.active, #menu.active {
+position: fixed;
+inset: 0;
+z-index: 100;
+width: 100vw;
+height: 100vh;
+max-width: none;
+background: var(--bg);
+overflow-y: auto;
+justify-content: center;
+padding: 20px;
+}
+}
+
+/* ── END SCREEN ── */
+#endscreen {
+gap: 24px;
+text-align: center;
+}
+
+.end-title {
+font-family: 'Cinzel', serif;
+font-size: 36px;
+letter-spacing: 4px;
+}
+
+.end-title.victory { color: var(--gold); text-shadow: 0 0 30px rgba(201,168,76,0.5); }
+.end-title.defeat { color: var(--red); text-shadow: 0 0 30px rgba(192,57,43,0.5); }
+
+.end-stats {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 1px;
+background: var(--border);
+border: 1px solid var(--border);
+width: 100%;
+max-width: 480px;
+}
+
+.stat-cell {
+background: var(--panel);
+padding: 16px;
+display: flex;
+flex-direction: column;
+gap: 4px;
+align-items: center;
+}
+
+.stat-label { font-size: 9px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
+.stat-val { font-size: 28px; color: var(--gold); }
+
+.end-msg {
+font-size: 12px;
+color: var(--text-dim);
+max-width: 400px;
+line-height: 1.8;
+}
+
+.btn-primary {
+background: transparent;
+border: 1px solid var(--gold-dim);
+color: var(--gold);
+font-family: 'Press Start 2P', monospace;
+font-size: 12px;
+letter-spacing: 3px;
+padding: 14px 40px;
+cursor: pointer;
+text-transform: uppercase;
+transition: all 0.2s;
+}
+
+.btn-primary:hover {
+border-color: var(--gold);
+box-shadow: 0 0 20px rgba(201,168,76,0.2);
+}
+
+/* Floating damage numbers */
+.dmg-float {
+position: absolute;
+font-family: 'Press Start 2P', monospace;
+font-size: 14px;
+font-weight: bold;
+pointer-events: none;
+animation: floatUp 0.8s ease-out forwards;
+z-index: 10;
+}
+
+@keyframes floatUp {
+0% { transform: translateY(0); opacity: 1; }
+100% { transform: translateY(-40px); opacity: 0; }
+}
+</style>
+</head>
+<body>
+
+<div id="rotate-hint">↻ Querformat für beste Erfahrung</div>
+
+<!-- MENU -->
+<div id="menu" class="screen active">
+<div class="title-block">
+<span class="title-sub">System initialisiert</span>
+<h1 class="title-main">NEMERIS</h1>
+<span class="quest-name">◈ Hauptquest I ◈</span>
+</div>
+
+<div class="divider"></div>
+
+<div class="quest-desc">
+Beweise deinen Wert.<br><br>
+Du hast <strong style="color:var(--gold)">30 Minuten</strong>. Töte eines oder mehrere lebende Organismen.
+Überlebe bis der Timer endet.<br><br>
+<span style="color:var(--red-dim)">Stirbst du — verlierst du alles Gesammelte.</span>
+</div>
+
+<div class="mode-select">
+<button class="mode-btn" onclick="startGame(30)">
+<span class="mode-time">30:00</span>
+NORMALER MODUS
+<span class="mode-label">Volle Erfahrung · Alle Spawns</span>
+</button>
+<button class="mode-btn" onclick="startGame(5)">
+<span class="mode-time">05:00</span>
+KURZES SPIEL
+<span class="mode-label">Komprimiert · Seltenere Spawns</span>
+</button>
+</div>
+
+<p class="warning-text">⚠ Klasse: Klassenlos — Jeder Mord zählt. Jeder Tod auch.</p>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen">
+<div class="hud">
+<div class="hud-block">
+<span class="hud-label">Trefferpunkte</span>
+<div class="hp-bar" id="hp-bar"></div>
+</div>
+<div class="hud-block" style="align-items:center">
+<span class="hud-label">Zeit verbleibend</span>
+<span id="timer-display">--:--</span>
+</div>
+<div class="hud-block" style="align-items:flex-end">
+<span class="hud-label">Gesammelte EP</span>
+<span class="hud-value" id="exp-display">0</span>
+</div>
+</div>
+
+<div class="canvas-wrap" id="canvas-wrap">
+<canvas id="gameCanvas" width="800" height="480"></canvas>
+<!-- Invisible split-screen touch overlay -->
+<div id="touch-hint">
+<div class="th-divider"></div>
+<div class="th-left">
+<div class="th-icon">👆</div>
+<div class="th-label">BEWEGEN</div>
+</div>
+<div class="th-right">
+<div class="th-icon">👊</div>
+<div class="th-label">ANGRIFF</div>
+</div>
+</div>
+<!-- Joystick visual follows finger -->
+<div id="joy-visual"><div id="joy-knob"></div></div>
+</div>
+
+<div class="log-panel" id="log"></div>
+<p class="controls-hint">[ WASD / Pfeiltasten — Bewegen ] [ Klick auf Feind — Angreifen ]</p>
+</div>
+
+<!-- END -->
+<div id="endscreen" class="screen">
+<h2 class="end-title" id="end-title">—</h2>
+<div class="end-stats">
+<div class="stat-cell">
+<span class="stat-label">EP verdient</span>
+<span class="stat-val" id="end-exp">0</span>
+</div>
+<div class="stat-cell">
+<span class="stat-label">Kills</span>
+<span class="stat-val" id="end-kills">0</span>
+</div>
+<div class="stat-cell">
+<span class="stat-label">Überlebt</span>
+<span class="stat-val" id="end-survived">0:00</span>
+</div>
+</div>
+<p class="end-msg" id="end-msg"></p>
+<button class="btn-primary" onclick="showMenu()">↩ Zurück zum Menü</button>
+</div>
+
+<script>
+// ── AUDIO ENGINE ──
+let audioCtx = null;
+
+function getAudio() {
+if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+return audioCtx;
+}
+
+function playSound(type) {
+try {
+const ac = getAudio();
+if (ac.state === 'suspended') ac.resume();
+const g = ac.createGain();
+g.connect(ac.destination);
+
+const now = ac.currentTime;
+
+switch(type) {
+case 'hit': {
+// Short blunt thud — player attacks
+const o = ac.createOscillator();
+o.type = 'square';
+o.frequency.setValueAtTime(220, now);
+o.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+g.gain.setValueAtTime(0.18, now);
+g.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+o.connect(g); o.start(now); o.stop(now + 0.1);
+break;
+}
+case 'hurt': {
+// Sharp pain sting — player takes damage
+const o = ac.createOscillator();
+o.type = 'sawtooth';
+o.frequency.setValueAtTime(440, now);
+o.frequency.exponentialRampToValueAtTime(150, now + 0.15);
+g.gain.setValueAtTime(0.22, now);
+g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+// Add noise layer
+const buf = ac.createBuffer(1, ac.sampleRate * 0.15, ac.sampleRate);
+const d = buf.getChannelData(0);
+for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * 0.3;
+const src = ac.createBufferSource();
+src.buffer = buf;
+const ng = ac.createGain();
+ng.gain.setValueAtTime(0.15, now);
+ng.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+src.connect(ng); ng.connect(ac.destination);
+src.start(now);
+o.connect(g); o.start(now); o.stop(now + 0.18);
+break;
+}
+case 'kill': {
+// Satisfying crunch + descending tone
+const o = ac.createOscillator();
+o.type = 'square';
+o.frequency.setValueAtTime(300, now);
+o.frequency.exponentialRampToValueAtTime(60, now + 0.2);
+g.gain.setValueAtTime(0.25, now);
+g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+const o2 = ac.createOscillator();
+o2.type = 'sine';
+o2.frequency.setValueAtTime(600, now);
+o2.frequency.exponentialRampToValueAtTime(200, now + 0.12);
+const g2 = ac.createGain();
+g2.gain.setValueAtTime(0.12, now);
+g2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+o2.connect(g2); g2.connect(ac.destination);
+o.connect(g); o.start(now); o.stop(now + 0.25);
+o2.start(now); o2.stop(now + 0.15);
+break;
+}
+case 'spawn': {
+const o = ac.createOscillator();
+o.type = 'sine';
+o.frequency.setValueAtTime(120, now);
+o.frequency.exponentialRampToValueAtTime(220, now + 0.15);
+g.gain.setValueAtTime(0.0, now);
+g.gain.linearRampToValueAtTime(0.12, now + 0.05);
+g.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+o.connect(g); o.start(now); o.stop(now + 0.32);
+break;
+}
+case 'alarm': {
+const o = ac.createOscillator();
+o.type = 'square';
+o.frequency.setValueAtTime(880, now);
+g.gain.setValueAtTime(0.08, now);
+g.gain.setValueAtTime(0.08, now + 0.06);
+g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+o.connect(g); o.start(now); o.stop(now + 0.1);
+break;
+}
+case 'victory': {
+// Rising arpeggio
+[261, 329, 392, 523].forEach((freq, i) => {
+const o = ac.createOscillator();
+const gv = ac.createGain();
+o.type = 'sine';
+o.frequency.value = freq;
+gv.gain.setValueAtTime(0.15, now + i*0.1);
+gv.gain.exponentialRampToValueAtTime(0.001, now + i*0.1 + 0.3);
+o.connect(gv); gv.connect(ac.destination);
+o.start(now + i*0.1); o.stop(now + i*0.1 + 0.35);
+});
+break;
+}
+case 'defeat': {
+[400, 300, 200, 100].forEach((freq, i) => {
+const o = ac.createOscillator();
+const gd = ac.createGain();
+o.type = 'sawtooth';
+o.frequency.value = freq;
+gd.gain.setValueAtTime(0.12, now + i*0.12);
+gd.gain.exponentialRampToValueAtTime(0.001, now + i*0.12 + 0.25);
+o.connect(gd); gd.connect(ac.destination);
+o.start(now + i*0.12); o.stop(now + i*0.12 + 0.28);
+});
+break;
+}
+case 'npc_attack': {
+// Short sharp click — NPC strikes
+const o = ac.createOscillator();
+o.type = 'square';
+o.frequency.setValueAtTime(180, now);
+o.frequency.exponentialRampToValueAtTime(60, now + 0.06);
+g.gain.setValueAtTime(0.14, now);
+g.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+o.connect(g); o.start(now); o.stop(now + 0.08);
+break;
+}
+case 'spotted_hostile': {
+// Two quick rising tones — danger alert
+[280, 420].forEach((freq, i) => {
+const o = ac.createOscillator();
+const gh = ac.createGain();
+o.type = 'square';
+o.frequency.value = freq;
+gh.gain.setValueAtTime(0.1, now + i*0.07);
+gh.gain.exponentialRampToValueAtTime(0.001, now + i*0.07 + 0.08);
+o.connect(gh); gh.connect(ac.destination);
+o.start(now + i*0.07); o.stop(now + i*0.07 + 0.09);
+});
+break;
+}
+case 'spotted_flee': {
+// Quick descending soft tone — something runs
+const o = ac.createOscillator();
+o.type = 'sine';
+o.frequency.setValueAtTime(500, now);
+o.frequency.exponentialRampToValueAtTime(200, now + 0.18);
+g.gain.setValueAtTime(0.07, now);
+g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+o.connect(g); o.start(now); o.stop(now + 0.22);
+break;
+}
+}
+} catch(e) { /* audio not supported — silent */ }
+}
+
+// ── CONSTANTS ──
+const TILE = 16;
+const W = 800, H = 480;
+
+const BEHAVIORS = ['pazifist','neutral','mitlaeufer','waechter','aggressiv','zeitbombe'];
+// Weighted spawn: Neutral 40%, Mitläufer 25%, Pazifist 15%, Aggressiv 10%, Zeitbombe 10%, Wächter 10%
+// (sums to 110 — normalize below via weighted table)
+function randomBehaviorWeighted() {
+const r = Math.random() * 110;
+if (r < 40) return 'neutral';
+if (r < 65) return 'mitlaeufer';
+if (r < 80) return 'pazifist';
+if (r < 90) return 'aggressiv';
+if (r < 100) return 'zeitbombe';
+return 'waechter';
+}
+const TIERS = [
+{ name:'Schwach', hp:3, dmg:1, exp:1, speed:0.7, color:'#7f8c8d' },
+{ name:'Mittel', hp:5, dmg:1, exp:2, speed:1.0, color:'#8e44ad' },
+{ name:'Schwer', hp:10,dmg:2, exp:5, speed:1.3, color:'#e74c3c' },
+];
+
+const BUG_TIER = { name:'Käfer', hp:1, dmg:0, exp:0, speed:0.5, color:'#27ae60' };
+
+// ── STATE ──
+let state, keys, canvas, ctx, animId, lastTime, gameMode;
+let mouseX = 0, mouseY = 0;
+let clickAttack = false;
+
+function initState(minutes) {
+return {
+player: { x: W/2, y: H/2, hp: 5, maxHp: 5, dmg: 1, speed: 2.2, baseSpeed: 2.2, size: 10,
+iframes: 0, killCount: 0, exp: 0, minSurvived: 0 },
+entities: [],
+totalTime: minutes * 60,
+timeLeft: minutes * 60,
+halfTime: minutes * 30,
+halfPassed: false,
+spawnTimer: 0,
+spawnInterval: minutes === 30 ? 120 : 180,
+running: false,
+dead: false,
+victory: false,
+logEntries: [],
+combatTriggered: false,
+combatTriggeredType: null,
+tierChances: { weak: 25, mid: 50, strong: 25 },
+particles: [],
+harmers: new Set(),
+obstacles: [],
+roads: [], // {axis:'h'|'v', pos, size} — generated at round start
+minuteTick: 0,
+minuteExp: 0,
+};
+}
+
+function randomBehavior() { return randomBehaviorWeighted(); }
+
+function randomTier() {
+// Chances shift over time — updated each minute in state.tierChances
+const c = state ? state.tierChances : { weak: 25, mid: 50, strong: 25 };
+const r = Math.random() * 100;
+if (r < c.weak) return {...TIERS[0]};
+if (r < c.weak + c.mid) return {...TIERS[1]};
+return {...TIERS[2]};
+}
+
+function spawnNPC(x, y) {
+const tier = randomTier();
+const beh = randomBehavior();
+return {
+type: 'npc',
+behavior: beh,
+x: x ?? Math.random() * (W - 40) + 20,
+y: y ?? Math.random() * (H - 40) + 20,
+hp: tier.hp, maxHp: tier.hp,
+dmg: tier.dmg, exp: tier.exp,
+speed: tier.speed, baseSpeed: tier.speed,
+color: tier.color,
+tierName: tier.name,
+size: 8,
+iframes: 0,
+aggro: false,
+aggroTarget: null,
+sightRadius: beh === 'waechter'
+? 160 + Math.random() * 40
+: 90 + Math.random() * 60,
+vx: (Math.random()-0.5)*0.8,
+vy: (Math.random()-0.5)*0.8,
+wanderTimer: Math.random() * 3,
+wanderPause: 0,
+attackCooldown: 0,
+active: true,
+spottedPlayer: false,
+skinIdx: Math.floor(Math.random() * 3),
+hairIdx: Math.floor(Math.random() * 5),
+memory: new Uint8Array(40 * 24),
+searchTarget: null,
+};
+}
+
+function spawnBug(x, y) {
+return {
+type: 'bug',
+x: x ?? Math.random() * (W - 40) + 20,
+y: y ?? Math.random() * (H - 40) + 20,
+hp: 1, maxHp: 1, dmg: 0,
+exp: Math.random() < 0.5 ? 1 : 0,
+speed: BUG_TIER.speed,
+color: BUG_TIER.color,
+size: 5,
+iframes: 0,
+active: true,
+bugType: Math.floor(Math.random() * 3), // 0=käfer, 1=ameise, 2=grashüpfer
+vx: (Math.random()-0.5)*1, vy: (Math.random()-0.5)*1,
+attackCooldown: 0,
+};
+}
+
+// ── MAP HELPERS ──
+const ROAD_W = 48; // road width in pixels
+
+function isOnRoad(x, y) {
+return state.roads.some(r => {
+if (r.axis === 'h') return y >= r.pos && y <= r.pos + ROAD_W;
+return x >= r.pos && x <= r.pos + ROAD_W;
+});
+}
+
+function isNearRoad(x, y, margin) {
+return state.roads.some(r => {
+if (r.axis === 'h') return Math.abs(y - r.pos) <= margin || Math.abs(y - (r.pos + ROAD_W)) <= margin;
+return Math.abs(x - r.pos) <= margin || Math.abs(x - (r.pos + ROAD_W)) <= margin;
+});
+}
+
+function generateRoads() {
+state.roads = [];
+// 1-2 roads, alternating H/V
+const count = 1 + Math.floor(Math.random() * 2);
+const axes = Math.random() < 0.5 ? ['h','v'] : ['v','h'];
+for (let i = 0; i < count; i++) {
+const axis = axes[i % 2];
+// Keep away from center spawn and edges
+const minP = 80, maxP = (axis === 'h' ? H : W) - 80 - ROAD_W;
+let pos;
+let tries = 0;
+do {
+pos = minP + Math.random() * (maxP - minP);
+tries++;
+} while (tries < 20 && state.roads.some(r =>
+r.axis === axis && Math.abs(r.pos - pos) < ROAD_W * 3
+));
+state.roads.push({ axis, pos: Math.round(pos) });
+}
+}
+
+function initialSpawn() {
+// 1. Generate roads
+generateRoads();
+
+// 2. Generate 1-3 obstacles with type rules
+const obsCount = 1 + Math.floor(Math.random() * 3);
+const types = ['car', 'house', 'bush'];
+let placed = 0, tries2 = 0;
+
+while (placed < obsCount && tries2 < 200) {
+tries2++;
+// Pick type based on available terrain
+const typePool = [];
+if (state.roads.length > 0) typePool.push('car');
+typePool.push('house', 'bush');
+const type = typePool[Math.floor(Math.random() * typePool.length)];
+
+let ow, oh, ox, oy, valid = false;
+
+if (type === 'car') {
+ow = 24; oh = 42;
+// Must be on road
+const road = state.roads[Math.floor(Math.random() * state.roads.length)];
+if (road.axis === 'h') {
+ox = 40 + Math.random() * (W - 80 - ow);
+oy = road.pos + Math.random() * (ROAD_W - oh - 2) + 1;
+} else {
+ox = road.pos + Math.random() * (ROAD_W - ow - 2) + 1;
+oy = 40 + Math.random() * (H - 80 - oh);
+}
+valid = true;
+
+} else if (type === 'house') {
+ow = 44; oh = 44;
+// Must be near road but not on it
+let attempts = 0;
+while (attempts++ < 50) {
+const road = state.roads[Math.floor(Math.random() * state.roads.length)];
+if (road.axis === 'h') {
+ox = 40 + Math.random() * (W - 80 - ow);
+oy = Math.random() < 0.5
+? road.pos - oh - 4 - Math.random() * 20
+: road.pos + ROAD_W + 4 + Math.random() * 20;
+} else {
+ox = Math.random() < 0.5
+? road.pos - ow - 4 - Math.random() * 20
+: road.pos + ROAD_W + 4 + Math.random() * 20;
+oy = 40 + Math.random() * (H - 80 - oh);
+}
+if (ox > 20 && ox + ow < W - 20 && oy > 20 && oy + oh < H - 20) { valid = true; break; }
+}
+
+} else { // bush
+ow = 28 + Math.floor(Math.random() * 20); oh = 22 + Math.floor(Math.random() * 16);
+let attempts = 0;
+while (attempts++ < 50) {
+ox = 40 + Math.random() * (W - 80 - ow);
+oy = 40 + Math.random() * (H - 80 - oh);
+// Must NOT be on road
+const cx = ox + ow/2, cy = oy + oh/2;
+if (!isOnRoad(cx, cy)) { valid = true; break; }
+}
+}
+
+if (!valid) continue;
+
+// Check no overlap with player spawn or other obstacles
+const pZone = rectsOverlap(ox, oy, ow, oh, W/2-50, H/2-50, 100, 100);
+const obsOverlap = state.obstacles.some(o =>
+rectsOverlap(ox, oy, ow+8, oh+8, o.x, o.y, o.w, o.h));
+if (pZone || obsOverlap) continue;
+
+state.obstacles.push({ x: Math.round(ox), y: Math.round(oy), w: ow, h: oh, type,
+carColor: type === 'car' ? ['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#2c3e50'][Math.floor(Math.random()*6)] : undefined
+});
+placed++;
+}
+
+// 3. Spawn NPCs (avoid obstacles and roads for fairness)
+const count = 5 + Math.floor(Math.random() * 3);
+for (let i = 0; i < count; i++) {
+const m = 60;
+let x, y, t2 = 0;
+do {
+x = Math.random()*(W-m*2)+m; y = Math.random()*(H-m*2)+m; t2++;
+} while (t2 < 50 && (
+dist(x, y, state.player.x, state.player.y) < 80 ||
+isInsideObstacle(x, y, 8)
+));
+state.entities.push(spawnNPC(x, y));
+}
+
+// 4. Spawn bugs preferring grass
+for (let i = 0; i < 4; i++) {
+let bx, by, t2 = 0;
+do {
+bx = Math.random()*(W-40)+20; by = Math.random()*(H-40)+20; t2++;
+} while (t2 < 30 && (isInsideObstacle(bx, by, 5) || isOnRoad(bx, by)));
+state.entities.push(spawnBug(bx, by));
+}
+}
+
+function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
+}
+
+function isInsideObstacle(x, y, radius) {
+return state.obstacles.some(o =>
+x + radius > o.x && x - radius < o.x + o.w &&
+y + radius > o.y && y - radius < o.y + o.h
+);
+}
+
+// Push entity out of any obstacle it overlaps
+function resolveObstacleCollision(e) {
+for (const o of state.obstacles) {
+const r = e.size;
+if (e.x + r > o.x && e.x - r < o.x + o.w &&
+e.y + r > o.y && e.y - r < o.y + o.h) {
+// Find shallowest axis to push out
+const overlapL = (e.x + r) - o.x;
+const overlapR = (o.x + o.w) - (e.x - r);
+const overlapT = (e.y + r) - o.y;
+const overlapB = (o.y + o.h) - (e.y - r);
+const minH = Math.min(overlapL, overlapR);
+const minV = Math.min(overlapT, overlapB);
+if (minH < minV) {
+e.x += overlapL < overlapR ? -overlapL : overlapR;
+if (e.vx !== undefined) e.vx *= -0.5;
+} else {
+e.y += overlapT < overlapB ? -overlapT : overlapB;
+if (e.vy !== undefined) e.vy *= -0.5;
+}
+}
+}
+}
+
+function allEnemiesDead() {
+return state.entities.every(e => !e.active);
+}
+
+function spawnGroup(min, max) {
+const count = min + Math.floor(Math.random() * (max - min + 1));
+for (let i = 0; i < count; i++) {
+const margin = 40;
+let nx, ny;
+do { nx = Math.random()*(W-margin*2)+margin; ny = Math.random()*(H-margin*2)+margin; }
+while (dist(nx, ny, state.player.x, state.player.y) < 70);
+state.entities.push(spawnNPC(nx, ny));
+}
+addLog(`${count} neue Entität(en) spawnen.`, 'warn');
+playSound('spawn');
+return count;
+}
+
+function doPeriodicSpawn() {
+if (gameMode !== 30) return;
+if (allEnemiesDead()) {
+spawnGroup(4, 7);
+} else if (Math.random() < 0.5) {
+const count = 1 + Math.floor(Math.random() * 3);
+for (let i = 0; i < count; i++) {
+const margin = 40;
+let x, y;
+do { x = Math.random()*(W-margin*2)+margin; y = Math.random()*(H-margin*2)+margin; }
+while (dist(x,y,state.player.x,state.player.y) < 60);
+state.entities.push(spawnNPC(x, y));
+}
+addLog(`${count} neue Entität(en) betreten das Feld.`, 'warn');
+playSound('spawn');
+}
+if (Math.random() < 0.6) state.entities.push(spawnBug());
+}
+
+function dist(x1,y1,x2,y2) { return Math.sqrt((x2-x1)**2+(y2-y1)**2); }
+
+function addLog(msg, cls='') {
+state.logEntries.push({ msg, cls });
+const el = document.getElementById('log');
+const div = document.createElement('div');
+div.className = 'log-entry ' + cls;
+div.textContent = '> ' + msg;
+el.appendChild(div);
+el.scrollTop = el.scrollHeight;
+if (state.logEntries.length > 60) {
+el.removeChild(el.firstChild);
+}
+}
+
+function spawnDmgNumber(x, y, val, color) {
+const wrap = document.getElementById('canvas-wrap');
+const rect = canvas.getBoundingClientRect();
+const scaleX = rect.width / W;
+const scaleY = rect.height / H;
+const el = document.createElement('div');
+el.className = 'dmg-float';
+el.style.color = color;
+el.style.left = (x * scaleX + rect.left - wrap.getBoundingClientRect().left) + 'px';
+el.style.top = (y * scaleY + rect.top - wrap.getBoundingClientRect().top) + 'px';
+el.textContent = val > 0 ? '-' + val : '+' + Math.abs(val);
+wrap.appendChild(el);
+setTimeout(() => el.remove(), 800);
+}
+
+// ── HELPERS ──
+const ATTACK_RADIUS = 55; // player melee reach
+
+function doWander(e, dt) {
+if (e.wanderPause > 0) { e.wanderPause -= dt; return; }
+e.wanderTimer -= dt;
+if (e.wanderTimer <= 0) {
+if (Math.random() < 0.25) {
+e.vx = 0; e.vy = 0;
+e.wanderPause = 0.6 + Math.random() * 1.5;
+} else {
+const angle = Math.random() * Math.PI * 2;
+e.vx = Math.cos(angle) * e.speed * 0.65;
+e.vy = Math.sin(angle) * e.speed * 0.65;
+}
+e.wanderTimer = 1.2 + Math.random() * 2.5;
+}
+e.x = Math.max(e.size, Math.min(W - e.size, e.x + e.vx));
+e.y = Math.max(e.size, Math.min(H - e.size, e.y + e.vy));
+if (e.x <= e.size || e.x >= W - e.size) e.vx *= -1;
+if (e.y <= e.size || e.y >= H - e.size) e.vy *= -1;
+resolveObstacleCollision(e);
+}
+
+// Returns nearest visible victim within e's sightRadius.
+// Filters by type: 'any', 'npc', 'bug', 'npc_or_player', 'bug_or_player'
+function nearestVisible(e, filter) {
+const p = state.player;
+let best = null, bestD = Infinity;
+const sr = e.sightRadius;
+
+// Check player (counts as 'human' target)
+if (filter === 'any' || filter === 'npc_or_player') {
+const dp = dist(e.x, e.y, p.x, p.y);
+if (dp <= sr && dp < bestD) { bestD = dp; best = { kind:'player', x:p.x, y:p.y, d:dp }; }
+}
+
+state.entities.forEach(o => {
+if (!o.active || o === e) return;
+const d = dist(e.x, e.y, o.x, o.y);
+if (d > sr || d >= bestD) return;
+if (filter === 'any') { bestD = d; best = { kind: o.type, ref:o, x:o.x, y:o.y, d }; }
+else if (filter === 'npc' && o.type === 'npc') { bestD = d; best = { kind:'npc', ref:o, x:o.x, y:o.y, d }; }
+else if (filter === 'bug' && o.type === 'bug') { bestD = d; best = { kind:'bug', ref:o, x:o.x, y:o.y, d }; }
+else if (filter === 'npc_or_player' && o.type === 'npc') { bestD = d; best = { kind:'npc', ref:o, x:o.x, y:o.y, d }; }
+else if (filter === 'bug_or_player' && o.type === 'bug') { bestD = d; best = { kind:'bug', ref:o, x:o.x, y:o.y, d }; }
+});
+return best;
+}
+
+function attackTarget(attacker, target) {
+if (!target) return;
+moveToward(attacker, target.x, target.y);
+if (target.d < 16 && attacker.attackCooldown <= 0) {
+if (target.kind === 'player') damagePlayer(attacker.dmg, attacker);
+else attackEntityByNPC(attacker, target.ref);
+}
+}
+
+const MEM_COLS = 40, MEM_ROWS = 24;
+const CELL_W = W / MEM_COLS, CELL_H = H / MEM_ROWS;
+
+function memCell(x, y) {
+return Math.floor(x / CELL_W) + Math.floor(y / CELL_H) * MEM_COLS;
+}
+
+// Update NPC memory: mark current cell and nearby cells within sight
+function updateMemory(e) {
+const sr = e.sightRadius;
+const c0 = Math.max(0, Math.floor((e.x - sr) / CELL_W));
+const c1 = Math.min(MEM_COLS - 1, Math.floor((e.x + sr) / CELL_W));
+const r0 = Math.max(0, Math.floor((e.y - sr) / CELL_H));
+const r1 = Math.min(MEM_ROWS - 1, Math.floor((e.y + sr) / CELL_H));
+for (let r = r0; r <= r1; r++) {
+for (let c = c0; c <= c1; c++) {
+const idx = c + r * MEM_COLS;
+if (e.memory[idx] < 1) e.memory[idx] = 1; // mark seen-empty
+}
+}
+// Mark cells with visible enemies as seen-enemy
+state.entities.forEach(o => {
+if (!o.active || o === e) return;
+if (dist(e.x, e.y, o.x, o.y) <= sr) {
+const idx = memCell(o.x, o.y);
+if (idx >= 0 && idx < e.memory.length) e.memory[idx] = 2;
+}
+});
+// Player
+if (dist(e.x, e.y, state.player.x, state.player.y) <= sr) {
+const idx = memCell(state.player.x, state.player.y);
+if (idx >= 0 && idx < e.memory.length) e.memory[idx] = 2;
+}
+}
+
+// Get best unseen/enemy cell for aggressive search (prefer enemy-marked cells)
+function getSearchTarget(e, preferEnemy) {
+let bestIdx = -1, bestScore = -1;
+for (let i = 0; i < e.memory.length; i++) {
+const val = e.memory[i];
+const score = preferEnemy
+? (val === 2 ? 3 : val === 0 ? 1 : 0) // aggro: prefer known-enemy then unseen
+: (val === 2 ? 3 : val === 1 ? 1 : 0); // pazifist: avoid known-enemy cells
+if (score > bestScore || (score === bestScore && Math.random() < 0.1)) {
+bestScore = score; bestIdx = i;
+}
+}
+if (bestIdx < 0) return null;
+const col = bestIdx % MEM_COLS, row = Math.floor(bestIdx / MEM_COLS);
+return { x: col * CELL_W + CELL_W / 2, y: row * CELL_H + CELL_H / 2 };
+}
+
+function applySpeedPenalty(e) {
+const hpFrac = e.hp / e.maxHp;
+// Each missing HP = 5% speed reduction
+const missing = e.maxHp - e.hp;
+e.speed = e.baseSpeed * Math.max(0.2, 1 - missing * 0.05);
+}
+function update(dt) {
+if (!state.running) return;
+const p = state.player;
+
+// Timer
+state.timeLeft -= dt;
+state.minuteTick += dt;
+if (state.minuteTick >= 60) {
+state.minuteTick -= 60;
+p.minSurvived++;
+p.exp += 1;
+addLog(`Minute ${p.minSurvived} überlebt. +1 EP`, 'exp');
+
+// Shift tier chances: each minute -1% weak (then mid), +1% strong
+const tc = state.tierChances;
+if (tc.weak > 0) {
+tc.weak = Math.max(0, tc.weak - 1);
+tc.strong = Math.min(100, tc.strong + 1);
+} else if (tc.mid > 0) {
+tc.mid = Math.max(0, tc.mid - 1);
+tc.strong = Math.min(100, tc.strong + 1);
+}
+
+// Spawn 0-3 new NPCs every minute, or 4-7 if all dead
+if (allEnemiesDead()) {
+spawnGroup(4, 7);
+} else {
+const newCount = Math.floor(Math.random() * 4);
+for (let i = 0; i < newCount; i++) {
+const margin = 40;
+let nx, ny;
+do { nx = Math.random()*(W-margin*2)+margin; ny = Math.random()*(H-margin*2)+margin; }
+while (dist(nx, ny, p.x, p.y) < 70);
+state.entities.push(spawnNPC(nx, ny));
+}
+if (newCount > 0) {
+addLog(`${newCount} neue Entität(en) spawnen.`, 'warn');
+playSound('spawn');
+}
+}
+updateHUD();
+}
+
+// Halfrime trigger for Zeitbombe
+if (!state.halfPassed && state.timeLeft <= state.halfTime) {
+state.halfPassed = true;
+state.entities.forEach(e => {
+if (e.type === 'npc' && e.behavior === 'zeitbombe') {
+e.aggro = true;
+addLog('⚠ Die Zeit läuft — Zeitbomben aktiviert!', 'warn');
+}
+});
+}
+
+// Spawn timer
+state.spawnTimer += dt;
+if (state.spawnTimer >= state.spawnInterval) {
+state.spawnTimer = 0;
+doPeriodicSpawn();
+}
+
+// Player movement
+let dx = 0, dy = 0;
+if (keys['w'] || keys['arrowup']) dy -= 1;
+if (keys['s'] || keys['arrowdown']) dy += 1;
+if (keys['a'] || keys['arrowleft']) dx -= 1;
+if (keys['d'] || keys['arrowright']) dx += 1;
+const mag = Math.sqrt(dx*dx+dy*dy) || 1;
+p.x = Math.max(p.size, Math.min(W-p.size, p.x + (dx/mag)*p.speed));
+p.y = Math.max(p.size, Math.min(H-p.size, p.y + (dy/mag)*p.speed));
+resolveObstacleCollision(p);
+
+if (p.iframes > 0) p.iframes -= dt;
+
+// Click attack — only hits entities within ATTACK_RADIUS of player
+if (clickAttack) {
+clickAttack = false;
+let hit = false;
+let closest = null, closestD = Infinity;
+state.entities.forEach(e => {
+if (!e.active) return;
+const d = dist(p.x, p.y, e.x, e.y);
+if (d <= ATTACK_RADIUS && d < closestD) { closestD = d; closest = e; }
+});
+if (closest) attackEntity(closest);
+}
+
+// Entity AI
+state.entities.forEach(e => {
+if (!e.active) return;
+if (e.iframes > 0) e.iframes -= dt;
+if (e.attackCooldown > 0) e.attackCooldown -= dt;
+
+if (e.type === 'bug') {
+e.wanderTimer = (e.wanderTimer || 0) - dt;
+if (e.wanderTimer <= 0) {
+const angle = Math.random() * Math.PI * 2;
+e.vx = Math.cos(angle) * e.speed;
+e.vy = Math.sin(angle) * e.speed;
+e.wanderTimer = 0.8 + Math.random() * 1.5;
+}
+e.x = Math.max(e.size, Math.min(W - e.size, e.x + e.vx));
+e.y = Math.max(e.size, Math.min(H - e.size, e.y + e.vy));
+if (e.x <= e.size || e.x >= W - e.size) e.vx *= -1;
+if (e.y <= e.size || e.y >= H - e.size) e.vy *= -1;
+return;
+}
+
+// Update memory for NPCs
+updateMemory(e);
+
+// NPC AI
+const dx2p = p.x - e.x, dy2p = p.y - e.y;
+const d2p = Math.sqrt(dx2p * dx2p + dy2p * dy2p);
+
+switch (e.behavior) {
+case 'pazifist': {
+let fleeX = null, fleeY = null, fleeD = Infinity;
+if (state.harmers.has('player') && d2p <= e.sightRadius) {
+fleeX = p.x; fleeY = p.y; fleeD = d2p;
+}
+state.harmers.forEach(h => {
+if (h === 'player' || !h.active) return;
+const dh = dist(e.x, e.y, h.x, h.y);
+if (dh <= e.sightRadius && dh < fleeD) {
+fleeX = h.x; fleeY = h.y; fleeD = dh;
+}
+});
+if (fleeX !== null) {
+// Harmer in sight — flee directly away
+if (!e.spottedPlayer) { e.spottedPlayer = true; playSound('spotted_flee'); }
+const fdx = e.x - fleeX, fdy = e.y - fleeY;
+const fm = Math.sqrt(fdx*fdx + fdy*fdy) || 1;
+e.x = Math.max(e.size, Math.min(W - e.size, e.x + (fdx/fm) * e.speed));
+e.y = Math.max(e.size, Math.min(H - e.size, e.y + (fdy/fm) * e.speed));
+e.vx = (fdx/fm) * e.speed * 0.6;
+e.vy = (fdy/fm) * e.speed * 0.6;
+e.wanderTimer = 1.5;
+e.searchTarget = null;
+} else {
+// No harmer visible — use memory to move toward safe unseen areas
+e.spottedPlayer = false;
+if (!e.searchTarget || dist(e.x, e.y, e.searchTarget.x, e.searchTarget.y) < 20) {
+// Find least-seen cell (value 0 = unseen, avoid value 2 = enemy seen there)
+let bestIdx = -1, bestScore = -1;
+for (let i = 0; i < e.memory.length; i++) {
+const val = e.memory[i];
+const score = val === 0 ? 2 : val === 1 ? 1 : 0; // prefer unseen, avoid enemy cells
+const noise = Math.random() * 0.3;
+if (score + noise > bestScore) { bestScore = score + noise; bestIdx = i; }
+}
+if (bestIdx >= 0) {
+const col = bestIdx % MEM_COLS, row = Math.floor(bestIdx / MEM_COLS);
+e.searchTarget = { x: col * CELL_W + CELL_W/2, y: row * CELL_H + CELL_H/2 };
+}
+}
+if (e.searchTarget) {
+moveToward(e, e.searchTarget.x, e.searchTarget.y);
+} else {
+doWander(e, dt);
+}
+}
+break;
+}
+
+case 'neutral':
+if (e.aggro) {
+if (e.aggroTarget && e.aggroTarget !== 'player' && e.aggroTarget.active) {
+const at = e.aggroTarget;
+const dat = dist(e.x, e.y, at.x, at.y);
+if (dat <= e.sightRadius) {
+moveToward(e, at.x, at.y);
+if (dat < 16 && e.attackCooldown <= 0) attackEntityByNPC(e, at);
+} else { doWander(e, dt); }
+} else if (d2p <= e.sightRadius) {
+if (!e.spottedPlayer) { e.spottedPlayer = true; playSound('spotted_hostile'); }
+moveToward(e, p.x, p.y);
+if (d2p < 16 && e.attackCooldown <= 0) damagePlayer(e.dmg, e);
+} else { e.spottedPlayer = false; doWander(e, dt); }
+} else {
+doWander(e, dt);
+if (d2p < 14 && e.attackCooldown <= 0) damagePlayer(e.dmg, e);
+}
+break;
+
+case 'mitlaeufer': {
+if (e.aggro && e.aggroTarget) {
+if (e.aggroTarget !== 'player' && e.aggroTarget.active) {
+const at = e.aggroTarget;
+const dat = dist(e.x, e.y, at.x, at.y);
+if (dat <= e.sightRadius) {
+moveToward(e, at.x, at.y);
+if (dat < 16 && e.attackCooldown <= 0) attackEntityByNPC(e, at);
+} else { doWander(e, dt); }
+} else if (d2p <= e.sightRadius) {
+if (!e.spottedPlayer) { e.spottedPlayer = true; playSound('spotted_hostile'); }
+moveToward(e, p.x, p.y);
+if (d2p < 16 && e.attackCooldown <= 0) damagePlayer(e.dmg, e);
+} else { e.spottedPlayer = false; doWander(e, dt); }
+} else if (state.combatTriggeredType) {
+const filter = state.combatTriggeredType === 'bug' ? 'bug' : 'npc_or_player';
+const t = nearestVisible(e, filter);
+if (t) { if (t.kind === 'player' && !e.spottedPlayer) { e.spottedPlayer = true; playSound('spotted_hostile'); } attackTarget(e, t); }
+else { e.spottedPlayer = false; doWander(e, dt); }
+} else {
+doWander(e, dt);
+}
+break;
+}
+
+case 'waechter':
+if (e.aggro && e.aggroTarget && e.aggroTarget !== 'player' && e.aggroTarget.active) {
+const at = e.aggroTarget;
+const dat = dist(e.x, e.y, at.x, at.y);
+if (dat <= e.sightRadius) {
+moveToward(e, at.x, at.y);
+if (dat < 16 && e.attackCooldown <= 0) attackEntityByNPC(e, at);
+} else { doWander(e, dt); }
+} else if (p.killCount > 0 && d2p <= e.sightRadius) {
+if (!e.spottedPlayer) { e.spottedPlayer = true; playSound('spotted_hostile'); }
+moveToward(e, p.x, p.y);
+if (d2p < 16 && e.attackCooldown <= 0) damagePlayer(e.dmg, e);
+} else {
+e.spottedPlayer = false;
+doWander(e, dt);
+}
+break;
+
+case 'aggressiv': {
+const t = nearestVisible(e, 'any');
+if (t) {
+if (t.kind === 'player' && !e.spottedPlayer) { e.spottedPlayer = true; playSound('spotted_hostile'); }
+e.searchTarget = null; // clear search — found something
+attackTarget(e, t);
+} else {
+e.spottedPlayer = false;
+// No target visible — use memory to search
+if (!e.searchTarget || dist(e.x, e.y, e.searchTarget.x, e.searchTarget.y) < 20) {
+e.searchTarget = getSearchTarget(e, true);
+}
+if (e.searchTarget) {
+moveToward(e, e.searchTarget.x, e.searchTarget.y);
+} else {
+doWander(e, dt);
+}
+}
+break;
+}
+
+case 'zeitbombe':
+if (e.aggro) {
+const t = nearestVisible(e, 'any');
+if (t) {
+if (t.kind === 'player' && !e.spottedPlayer) { e.spottedPlayer = true; playSound('spotted_hostile'); }
+attackTarget(e, t);
+} else { e.spottedPlayer = false; doWander(e, dt); }
+} else {
+doWander(e, dt);
+}
+break;
+}
+});
+
+// Check win/lose
+if (state.timeLeft <= 0) {
+state.timeLeft = 0;
+endGame(p.killCount > 0);
+}
+
+if (p.hp <= 0 && !state.dead) {
+state.dead = true;
+state.running = false;
+endGame(false, true);
+}
+
+// Update particles
+state.particles = state.particles.filter(p2 => {
+p2.x += p2.vx; p2.y += p2.vy;
+p2.vx *= 0.88; p2.vy *= 0.88;
+p2.life -= dt;
+return p2.life > 0;
+});
+
+updateHUD();
+updateTimer();
+}
+
+function moveToward(e, tx, ty) {
+const dx = tx - e.x, dy = ty - e.y;
+const d = Math.sqrt(dx*dx+dy*dy) || 1;
+e.x = Math.max(e.size, Math.min(W-e.size, e.x + (dx/d)*e.speed));
+e.y = Math.max(e.size, Math.min(H-e.size, e.y + (dy/d)*e.speed));
+resolveObstacleCollision(e);
+}
+
+function attackEntity(e) {
+if (e.iframes > 0) return;
+e.hp -= state.player.dmg;
+e.iframes = 0.3;
+spawnDmgNumber(e.x, e.y - 10, state.player.dmg, '#e74c3c');
+playSound('hit');
+
+state.combatTriggered = true;
+state.combatTriggeredType = e.type;
+state.harmers.add('player');
+
+// All NPCs except pazifist retaliate when hit by player
+if (e.type === 'npc' && e.behavior !== 'pazifist') {
+e.aggro = true;
+e.aggroTarget = 'player';
+}
+
+if (e.hp <= 0) killEntity(e, true);
+else if (e.type === 'npc') applySpeedPenalty(e);
+}
+
+function attackEntityByNPC(attacker, target) {
+if (target.iframes > 0) return;
+target.hp -= attacker.dmg;
+target.iframes = 0.4;
+attacker.attackCooldown = 1.0;
+state.harmers.add(attacker);
+spawnDmgNumber(target.x, target.y - 10, attacker.dmg, '#e67e22');
+
+// All NPCs except pazifist retaliate when hit
+if (target.type === 'npc' && target.behavior !== 'pazifist') {
+target.aggro = true;
+target.aggroTarget = attacker; // remember who hit them
+}
+
+if (target.hp <= 0) {
+killEntity(target, false);
+addLog(`${attacker.behavior} hat ${target.tierName || 'Käfer'} getötet.`, 'warn');
+} else if (target.type === 'npc') {
+applySpeedPenalty(target);
+}
+}
+
+function killEntity(e, byPlayer) {
+e.active = false;
+// Spawn death particles
+const color = e.color || '#aaa';
+for (let i = 0; i < 8; i++) {
+const angle = (Math.PI * 2 / 8) * i + Math.random() * 0.4;
+const speed = 1.5 + Math.random() * 2.5;
+state.particles.push({
+x: e.x, y: e.y,
+vx: Math.cos(angle) * speed,
+vy: Math.sin(angle) * speed,
+life: 0.5 + Math.random() * 0.3,
+maxLife: 0.8,
+color,
+size: 2 + Math.random() * 3,
+});
+}
+if (byPlayer) {
+state.player.killCount++;
+const gained = e.exp || 0;
+state.player.exp += gained;
+const label = e.type === 'bug' ? 'Käfer' : `${e.tierName} (${e.behavior})`;
+addLog(gained > 0 ? `${label} getötet. +${gained} EP` : `${label} getötet. +0 EP`, 'kill');
+playSound('kill');
+updateHUD();
+}
+}
+
+function damagePlayer(dmg, attacker) {
+const p = state.player;
+if (p.iframes > 0) return;
+p.hp -= dmg;
+p.iframes = 0.6;
+attacker.attackCooldown = 1.2;
+spawnDmgNumber(p.x, p.y - 14, dmg, '#c0392b');
+if (p.hp < 0) p.hp = 0;
+// Speed penalty: -5% per missing HP
+const missingHp = p.maxHp - p.hp;
+p.speed = p.baseSpeed * Math.max(0.2, 1 - missingHp * 0.05);
+addLog(`Du wurdest getroffen. ${p.hp} HP verbleiben.`, 'warn');
+playSound('npc_attack');
+playSound('hurt');
+document.getElementById('canvas-wrap').classList.add('danger');
+setTimeout(() => document.getElementById('canvas-wrap').classList.remove('danger'), 400);
+updateHUD();
+}
+
+function updateHUD() {
+const p = state.player;
+const bar = document.getElementById('hp-bar');
+bar.innerHTML = '';
+for (let i = 0; i < p.maxHp; i++) {
+const pip = document.createElement('div');
+pip.className = 'hp-pip' + (i < p.hp ? '' : ' empty');
+bar.appendChild(pip);
+}
+document.getElementById('exp-display').textContent = p.exp;
+}
+
+function updateTimer() {
+const el = document.getElementById('timer-display');
+const t = Math.max(0, Math.ceil(state.timeLeft));
+const m = Math.floor(t/60).toString().padStart(2,'0');
+const s = (t%60).toString().padStart(2,'0');
+el.textContent = `${m}:${s}`;
+el.classList.toggle('urgent', state.timeLeft < 30);
+if (state.timeLeft < 30 && Math.ceil(state.timeLeft) !== state._lastAlarmSec) {
+state._lastAlarmSec = Math.ceil(state.timeLeft);
+playSound('alarm');
+}
+}
+
+// ── DRAW ──
+function draw() {
+ctx.clearRect(0, 0, W, H);
+
+// ── BACKGROUND ──
+// Grass base
+ctx.fillStyle = '#2d5a1b';
+ctx.fillRect(0, 0, W, H);
+
+// Grass texture dots
+ctx.fillStyle = '#265016';
+for (let gx = 4; gx < W; gx += 16) {
+for (let gy = 4; gy < H; gy += 16) {
+ctx.fillRect(gx + (gx*gy % 5), gy + (gx*gy % 3), 2, 2);
+}
+}
+ctx.fillStyle = '#357a20';
+for (let gx = 10; gx < W; gx += 20) {
+for (let gy = 8; gy < H; gy += 18) {
+ctx.fillRect(gx + (gx*gy % 7), gy + (gx*gy % 5), 2, 1);
+}
+}
+
+// Roads
+state.roads.forEach(r => {
+const isH = r.axis === 'h';
+// Asphalt
+ctx.fillStyle = '#3a3a3a';
+if (isH) ctx.fillRect(0, r.pos, W, ROAD_W);
+else ctx.fillRect(r.pos, 0, ROAD_W, H);
+// Road edge lines
+ctx.fillStyle = '#555';
+if (isH) {
+ctx.fillRect(0, r.pos, W, 2);
+ctx.fillRect(0, r.pos + ROAD_W - 2, W, 2);
+} else {
+ctx.fillRect(r.pos, 0, 2, H);
+ctx.fillRect(r.pos + ROAD_W - 2, 0, 2, H);
+}
+// Dashed center line
+ctx.fillStyle = '#f0c040';
+const dashLen = 14, gapLen = 10;
+if (isH) {
+const cy = r.pos + ROAD_W/2 - 1;
+for (let dx = 0; dx < W; dx += dashLen + gapLen)
+ctx.fillRect(dx, cy, dashLen, 2);
+} else {
+const cx = r.pos + ROAD_W/2 - 1;
+for (let dy = 0; dy < H; dy += dashLen + gapLen)
+ctx.fillRect(cx, dy, 2, dashLen);
+}
+});
+
+// ── OBSTACLES ──
+state.obstacles.forEach(o => {
+if (o.type === 'car') drawCar(ctx, o);
+else if (o.type === 'house') drawHouse(ctx, o);
+else drawBush(ctx, o);
+});
+
+// Entities
+state.entities.forEach(e => {
+if (!e.active) return;
+ctx.globalAlpha = e.iframes > 0 ? 0.4 : 1;
+
+if (e.type === 'bug') {
+drawBug(ctx, e);
+} else {
+// Sight radius (subtle)
+ctx.globalAlpha = 0.06;
+ctx.fillStyle = behaviorColor(e.behavior);
+ctx.beginPath();
+ctx.arc(e.x, e.y, e.sightRadius, 0, Math.PI * 2);
+ctx.fill();
+ctx.globalAlpha = e.iframes > 0 ? 0.4 : 1;
+
+drawNPC(ctx, e);
+
+// HP bar above
+const s = e.size;
+const bw = s*2 + 4;
+ctx.fillStyle = '#111';
+ctx.fillRect(e.x - s - 2, e.y - s - 9, bw, 3);
+ctx.fillStyle = e.hp/e.maxHp > 0.5 ? '#2ecc71' : '#e74c3c';
+ctx.fillRect(e.x - s - 2, e.y - s - 9, bw * (e.hp/e.maxHp), 3);
+
+// Behavior color dot
+ctx.fillStyle = behaviorColor(e.behavior);
+ctx.fillRect(e.x - 1, e.y - 1, 3, 3);
+}
+
+ctx.globalAlpha = 1;
+});
+
+// Particles (death animations)
+state.particles.forEach(p2 => {
+const alpha = Math.max(0, p2.life / p2.maxLife);
+ctx.globalAlpha = alpha;
+ctx.fillStyle = p2.color;
+ctx.fillRect(p2.x - p2.size/2, p2.y - p2.size/2, p2.size, p2.size);
+});
+ctx.globalAlpha = 1;
+
+// Player
+const p = state.player;
+ctx.globalAlpha = p.iframes > 0 ? 0.3 : 1;
+drawPlayer(ctx, p);
+ctx.globalAlpha = 1;
+
+// Attack radius around player
+const p2 = state.player;
+ctx.strokeStyle = 'rgba(201,168,76,0.15)';
+ctx.lineWidth = 1;
+ctx.setLineDash([4, 4]);
+ctx.beginPath();
+ctx.arc(p2.x, p2.y, ATTACK_RADIUS, 0, Math.PI * 2);
+ctx.stroke();
+ctx.setLineDash([]);
+
+// Highlight entities inside attack radius
+state.entities.forEach(e => {
+if (!e.active) return;
+if (dist(p2.x, p2.y, e.x, e.y) <= ATTACK_RADIUS) {
+ctx.strokeStyle = 'rgba(192,57,43,0.5)';
+ctx.lineWidth = 1;
+ctx.strokeRect(e.x - e.size - 2, e.y - e.size - 2, (e.size + 2) * 2, (e.size + 2) * 2);
+}
+});
+}
+
+// ── PIXEL ART SPRITES ──
+// Helper: pixel fill shorthand
+function px(c, x, y, w, h) { c.fillRect(x, y, w, h); }
+
+function drawBug(c, e) {
+const x = Math.round(e.x), y = Math.round(e.y);
+const t = e.bugType || 0;
+c.globalAlpha = e.iframes > 0 ? 0.4 : 1;
+
+if (t === 0) {
+// ── KÄFER (beetle) top-down ──
+// Shell — dark green oval
+c.fillStyle = '#1a6b1a';
+px(c, x-3, y-4, 6, 8);
+px(c, x-4, y-2, 8, 4);
+// Shell highlight
+c.fillStyle = '#2ecc71';
+px(c, x-2, y-3, 2, 3);
+// Shell split line
+c.fillStyle = '#0d3d0d';
+px(c, x, y-4, 1, 8);
+// Head
+c.fillStyle = '#145214';
+px(c, x-2, y-5, 4, 2);
+// Antennae
+c.fillStyle = '#0d3d0d';
+px(c, x-3, y-6, 1, 2); px(c, x+2, y-6, 1, 2);
+// Legs (3 per side)
+c.fillStyle = '#0d3d0d';
+px(c, x-5, y-2, 2, 1); px(c, x-5, y, 2, 1); px(c, x-5, y+2, 2, 1);
+px(c, x+3, y-2, 2, 1); px(c, x+3, y, 2, 1); px(c, x+3, y+2, 2, 1);
+
+} else if (t === 1) {
+// ── AMEISE (ant) top-down ──
+c.fillStyle = '#8B0000';
+// Head
+px(c, x-2, y-5, 4, 3);
+// Thorax
+px(c, x-2, y-1, 4, 3);
+// Abdomen (bigger oval)
+px(c, x-3, y+2, 6, 4);
+px(c, x-2, y+6, 4, 1);
+// Highlight
+c.fillStyle = '#c0392b';
+px(c, x-1, y-4, 2, 1);
+px(c, x-1, y, 2, 1);
+px(c, x-1, y+3, 2, 1);
+// Antennae
+c.fillStyle = '#5a0000';
+px(c, x-3, y-7, 1, 3); px(c, x+2, y-7, 1, 3);
+px(c, x-4, y-8, 1, 1); px(c, x+3, y-8, 1, 1);
+// Legs
+c.fillStyle = '#5a0000';
+px(c, x-5, y-1, 3, 1); px(c, x-5, y+1, 2, 1);
+px(c, x+2, y-1, 3, 1); px(c, x+3, y+1, 2, 1);
+px(c, x-4, y+3, 2, 1); px(c, x+2, y+3, 2, 1);
+
+} else {
+// ── GRASHÜPFER (grasshopper) top-down ──
+c.fillStyle = '#4a7c1a';
+// Body (elongated)
+px(c, x-2, y-5, 4, 10);
+px(c, x-3, y-2, 6, 4);
+// Head
+c.fillStyle = '#3d6614';
+px(c, x-2, y-6, 4, 2);
+// Eye dots
+c.fillStyle = '#000';
+px(c, x-2, y-6, 1, 1); px(c, x+1, y-6, 1, 1);
+// Highlight
+c.fillStyle = '#7ab828';
+px(c, x-1, y-4, 1, 4);
+// Big back legs (characteristic)
+c.fillStyle = '#3d6614';
+px(c, x-6, y+1, 3, 1); px(c, x-7, y+2, 2, 1); px(c, x-8, y+3, 3, 2);
+px(c, x+3, y+1, 3, 1); px(c, x+5, y+2, 2, 1); px(c, x+5, y+3, 3, 2);
+// Front legs (small)
+c.fillStyle = '#3d6614';
+px(c, x-4, y-2, 2, 1); px(c, x+2, y-2, 2, 1);
+// Antennae (long)
+c.fillStyle = '#2d4d10';
+px(c, x-1, y-7, 1, 3); px(c, x, y-7, 1, 3);
+px(c, x-2, y-9, 1, 2); px(c, x+1, y-9, 1, 2);
+}
+}
+
+// NPC skin tones by tier
+const SKIN = ['#c8a882', '#b8956a', '#a07850'];
+const HAIR = ['#3d2b1f', '#1a1a1a', '#8b4513', '#c9a84c', '#555'];
+
+function drawNPC(c, e) {
+const x = Math.round(e.x), y = Math.round(e.y);
+const skinIdx = e.skinIdx !== undefined ? e.skinIdx : 0;
+const hairIdx = e.hairIdx !== undefined ? e.hairIdx : 0;
+const skin = SKIN[skinIdx % SKIN.length];
+const hair = HAIR[hairIdx % HAIR.length];
+const bc = behaviorColor(e.behavior); // shirt color = behavior tint
+
+// Shadow
+c.fillStyle = 'rgba(0,0,0,0.25)';
+c.beginPath(); c.ellipse(x, y+7, 5, 2, 0, 0, Math.PI*2); c.fill();
+
+// Body / shirt (top-down, just a circle with color)
+c.fillStyle = bc + '55'; // semi-transparent behavior color as shirt
+c.beginPath(); c.ellipse(x, y+3, 5, 4, 0, 0, Math.PI*2); c.fill();
+
+// Head — round
+c.fillStyle = skin;
+c.beginPath(); c.arc(x, y, 6, 0, Math.PI*2); c.fill();
+
+// Hair (top arc)
+c.fillStyle = hair;
+px(c, x-5, y-5, 10, 3);
+px(c, x-4, y-6, 8, 2);
+px(c, x-3, y-7, 6, 2);
+
+// Eyes (two small dots)
+c.fillStyle = '#1a1a1a';
+px(c, x-3, y-1, 2, 2);
+px(c, x+1, y-1, 2, 2);
+
+// Nose dot
+c.fillStyle = skin === '#c8a882' ? '#b89060' : '#8b6040';
+px(c, x, y+1, 1, 1);
+}
+
+function drawPlayer(c, p) {
+const x = Math.round(p.x), y = Math.round(p.y);
+
+// Shadow
+c.fillStyle = 'rgba(0,0,0,0.3)';
+c.beginPath(); c.ellipse(x, y+7, 6, 2, 0, 0, Math.PI*2); c.fill();
+
+// Body — golden shirt
+c.fillStyle = '#8b6914';
+c.beginPath(); c.ellipse(x, y+3, 6, 5, 0, 0, Math.PI*2); c.fill();
+
+// Head
+c.fillStyle = '#d4a574';
+c.beginPath(); c.arc(x, y, 7, 0, Math.PI*2); c.fill();
+
+// Hair — dark
+c.fillStyle = '#2a1a0a';
+px(c, x-5, y-6, 11, 4);
+px(c, x-4, y-7, 9, 2);
+px(c, x-3, y-8, 7, 2);
+
+// Eyes — white then pupil
+c.fillStyle = '#fff';
+px(c, x-4, y-1, 3, 2);
+px(c, x+1, y-1, 3, 2);
+c.fillStyle = '#1a1a1a';
+px(c, x-3, y-1, 2, 2);
+px(c, x+2, y-1, 2, 2);
+
+// Gold crown/mark on forehead
+c.fillStyle = '#c9a84c';
+px(c, x-1, y-5, 3, 2);
+px(c, x, y-6, 1, 1);
+}
+
+function drawCar(c, o) {
+const {x, y, w, h} = o;
+// Determine orientation based on which road it's on
+const onH = state.roads.some(r => r.axis === 'h' && y >= r.pos && y + h <= r.pos + ROAD_W + 4);
+const isV = !onH; // vertical car if on vertical road
+
+if (!isV) {
+// Top-down car facing up/down (h road) — 24w x 42h
+// Body
+c.fillStyle = o.carColor || '#c0392b';
+px(c, x+2, y+4, w-4, h-8);
+// Hood
+c.fillStyle = '#a0301f';
+px(c, x+3, y, w-6, 8);
+// Trunk
+px(c, x+3, y+h-6, w-6, 6);
+// Windshields
+c.fillStyle = '#88ccff';
+px(c, x+4, y+6, w-8, 7);
+px(c, x+4, y+h-13, w-8, 6);
+// Roof
+c.fillStyle = '#8b1a10';
+px(c, x+5, y+14, w-10, h-28);
+// Wheels
+c.fillStyle = '#111';
+px(c, x, y+6, 4, 7); px(c, x+w-4, y+6, 4, 7);
+px(c, x, y+h-13, 4, 7); px(c, x+w-4, y+h-13, 4, 7);
+// Wheel highlight
+c.fillStyle = '#555';
+px(c, x+1, y+7, 2, 2); px(c, x+w-3, y+7, 2, 2);
+px(c, x+1, y+h-12, 2, 2); px(c, x+w-3, y+h-12, 2, 2);
+// Headlights
+c.fillStyle = '#ffe080';
+px(c, x+3, y+1, 4, 3); px(c, x+w-7, y+1, 4, 3);
+// Tail lights
+c.fillStyle = '#e74c3c';
+px(c, x+3, y+h-4, 4, 3); px(c, x+w-7, y+h-4, 4, 3);
+} else {
+// Rotated 90° for vertical road
+const cw = h, ch = w;
+const rx = x, ry = y;
+c.fillStyle = o.carColor || '#2980b9';
+px(c, rx+4, ry+2, cw-8, ch-4);
+c.fillStyle = '#1a5f8a';
+px(c, rx, ry+3, 8, ch-6);
+px(c, rx+cw-8, ry+3, 8, ch-6);
+c.fillStyle = '#88ccff';
+px(c, rx+6, ry+4, 7, ch-8);
+px(c, rx+cw-13, ry+4, 6, ch-8);
+c.fillStyle = '#111';
+px(c, rx+6, ry, 7, 4); px(c, rx+6, ry+ch-4, 7, 4);
+px(c, rx+cw-13, ry, 6, 4); px(c, rx+cw-13, ry+ch-4, 6, 4);
+c.fillStyle = '#ffe080';
+px(c, rx+1, ry+3, 3, 4); px(c, rx+1, ry+ch-7, 3, 4);
+c.fillStyle = '#e74c3c';
+px(c, rx+cw-4, ry+3, 3, 4); px(c, rx+cw-4, ry+ch-7, 3, 4);
+}
+}
+
+function drawHouse(c, o) {
+const {x, y, w, h} = o;
+// Foundation / walls
+c.fillStyle = '#c8a878';
+px(c, x, y+h/3, w, h*2/3);
+// Wall detail bricks
+c.fillStyle = '#b89060';
+for (let bx = x+2; bx < x+w-2; bx += 8) {
+for (let by = y+h/3+3; by < y+h-3; by += 5) {
+px(c, bx, by, 6, 3);
+}
+}
+// Roof
+c.fillStyle = '#8b2020';
+px(c, x-2, y, w+4, h/3+4);
+// Roof ridge
+c.fillStyle = '#6a1515';
+px(c, x+w/2-2, y, 4, h/3+4);
+// Roof tiles
+c.fillStyle = '#7a1c1c';
+for (let tx = x; tx < x+w; tx += 10) {
+px(c, tx, y+4, 8, 2);
+px(c, tx+5, y+8, 8, 2);
+px(c, tx, y+12, 8, 2);
+}
+// Door
+c.fillStyle = '#5a3010';
+const dx = x + w/2 - 6;
+px(c, dx, y+h-18, 12, 18);
+// Door knob
+c.fillStyle = '#c9a84c';
+px(c, dx+9, y+h-10, 2, 2);
+// Windows
+c.fillStyle = '#88ccff';
+px(c, x+5, y+h/3+8, 12, 10);
+px(c, x+w-17, y+h/3+8, 12, 10);
+// Window frames
+c.fillStyle = '#fff';
+px(c, x+5, y+h/3+12, 12, 1);
+px(c, x+11, y+h/3+8, 1, 10);
+px(c, x+w-17, y+h/3+12, 12, 1);
+px(c, x+w-12, y+h/3+8, 1, 10);
+// Chimney
+c.fillStyle = '#8b2020';
+px(c, x+w-14, y-6, 8, h/3+6);
+c.fillStyle = '#555';
+px(c, x+w-13, y-8, 6, 4);
+}
+
+function drawBush(c, o) {
+const {x, y, w, h} = o;
+// Multiple overlapping bush clusters
+const clusters = [
+{dx: 0, dy: 0, r: h*0.5, col: '#1e6b10'},
+{dx: w*0.35,dy:-h*0.1,r: h*0.45, col: '#267314'},
+{dx: w*0.65,dy: h*0.05,r:h*0.4, col: '#1a5c0e'},
+{dx: w*0.2, dy: h*0.3, r:h*0.35, col: '#235f11'},
+{dx: w*0.75,dy: h*0.25,r:h*0.38, col: '#2d7a18'},
+];
+clusters.forEach(cl => {
+c.fillStyle = cl.col;
+c.beginPath();
+c.arc(x + cl.dx, y + cl.dy + h*0.5, cl.r, 0, Math.PI*2);
+c.fill();
+});
+// Highlights
+c.fillStyle = '#3a9e22';
+c.beginPath(); c.arc(x + w*0.2, y + h*0.25, h*0.18, 0, Math.PI*2); c.fill();
+c.beginPath(); c.arc(x + w*0.6, y + h*0.2, h*0.15, 0, Math.PI*2); c.fill();
+// Shadow base
+c.fillStyle = 'rgba(0,0,0,0.2)';
+c.beginPath(); c.ellipse(x + w*0.5, y + h*0.9, w*0.45, h*0.15, 0, 0, Math.PI*2); c.fill();
+}
+
+function behaviorColor(b) {
+const map = {
+pazifist: '#3498db', neutral: '#95a5a6', mitlaeufer: '#e67e22',
+waechter: '#9b59b6', aggressiv: '#e74c3c', zeitbombe: '#f39c12'
+};
+return map[b] || '#fff';
+}
+
+// ── GAME LOOP ──
+function loop(ts) {
+if (!state.running) return;
+const dt = Math.min((ts - lastTime) / 1000, 0.1);
+lastTime = ts;
+update(dt);
+draw();
+animId = requestAnimationFrame(loop);
+}
+
+// ── SCREENS ──
+function showScreen(id) {
+document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+}
+
+function showMenu() {
+if (animId) cancelAnimationFrame(animId);
+showScreen('menu');
+}
+
+function startGame(minutes) {
+gameMode = minutes;
+state = initState(minutes);
+keys = {};
+
+document.getElementById('log').innerHTML = '';
+showScreen('game');
+updateHUD();
+updateTimer();
+
+canvas = document.getElementById('gameCanvas');
+ctx = canvas.getContext('2d');
+
+canvas.addEventListener('mousemove', e => {
+const r = canvas.getBoundingClientRect();
+mouseX = (e.clientX - r.left) * (W / r.width);
+mouseY = (e.clientY - r.top) * (H / r.height);
+});
+
+canvas.addEventListener('click', () => { clickAttack = true; });
+
+document.onkeydown = e => { keys[e.key.toLowerCase()] = true; };
+document.onkeyup = e => { keys[e.key.toLowerCase()] = false; };
+
+// ── TOUCH JOYSTICK ──
+// ── TOUCH: invisible split-screen ──
+// Left half = move joystick, Right half = attack
+// Works in any orientation, no visible buttons blocking the view
+if (navigator.maxTouchPoints > 0) {
+const cw = document.getElementById('canvas-wrap');
+const joyVisual = document.getElementById('joy-visual');
+const joyKnob = document.getElementById('joy-knob');
+const touchHint = document.getElementById('touch-hint');
+
+// Show hint briefly at start
+touchHint.style.display = 'block';
+setTimeout(() => {
+touchHint.style.transition = 'opacity 0.8s';
+touchHint.style.opacity = '0';
+setTimeout(() => { touchHint.style.display = 'none'; }, 800);
+}, 1800);
+
+const JMAX = 40;
+let moveId = null, moveOrigin = {x:0,y:0};
+
+function getCanvasPos(touch) {
+const r = cw.getBoundingClientRect();
+return { x: touch.clientX - r.left, y: touch.clientY - r.top, cw: r.width };
+}
+
+function updateJoyVisual(ox, oy, dx, dy) {
+joyVisual.style.display = 'block';
+joyVisual.style.left = ox + 'px';
+joyVisual.style.top = oy + 'px';
+const d = Math.sqrt(dx*dx+dy*dy);
+const clamped = d > JMAX ? JMAX/d : 1;
+joyKnob.style.left = (40 + dx*clamped) + 'px';
+joyKnob.style.top = (40 + dy*clamped) + 'px';
+joyKnob.style.transform = 'none';
+}
+
+function hideJoyVisual() {
+joyVisual.style.display = 'none';
+joyKnob.style.left = '50%'; joyKnob.style.top = '50%';
+joyKnob.style.transform = 'translate(-50%,-50%)';
+}
+
+cw.addEventListener('touchstart', ev => {
+ev.preventDefault();
+for (const t of ev.changedTouches) {
+const {x, y, cw: cwW} = getCanvasPos(t);
+if (x < cwW / 2) {
+// Left half — start move
+moveId = t.identifier;
+moveOrigin = {x, y};
+keys['w'] = keys['s'] = keys['a'] = keys['d'] = false;
+updateJoyVisual(x, y, 0, 0);
+} else {
+// Right half — attack
+clickAttack = true;
+}
+}
+}, {passive:false});
+
+cw.addEventListener('touchmove', ev => {
+ev.preventDefault();
+for (const t of ev.changedTouches) {
+if (t.identifier === moveId) {
+const {x, y} = getCanvasPos(t);
+const dx = x - moveOrigin.x, dy = y - moveOrigin.y;
+updateJoyVisual(moveOrigin.x, moveOrigin.y, dx, dy);
+keys['w'] = dy < -10;
+keys['s'] = dy > 10;
+keys['a'] = dx < -10;
+keys['d'] = dx > 10;
+}
+}
+}, {passive:false});
+
+cw.addEventListener('touchend', ev => {
+ev.preventDefault();
+for (const t of ev.changedTouches) {
+if (t.identifier === moveId) {
+moveId = null;
+keys['w'] = keys['s'] = keys['a'] = keys['d'] = false;
+hideJoyVisual();
+}
+}
+}, {passive:false});
+
+canvas.addEventListener('click', () => { clickAttack = true; });
+}
+
+initialSpawn();
+
+addLog('Quest gestartet. Töte. Überlebe.', '');
+addLog('Pazifist=blau · Neutral=grau · Mitläufer=orange · Wächter=lila · Aggressiv=rot · Zeitbombe=gelb', 'exp');
+
+state.running = true;
+lastTime = performance.now();
+animId = requestAnimationFrame(loop);
+}
+
+function endGame(won, died = false) {
+if (animId) cancelAnimationFrame(animId);
+state.running = false;
+
+const p = state.player;
+const elapsed = state.totalTime - Math.max(0, state.timeLeft);
+const em = Math.floor(elapsed/60).toString().padStart(2,'0');
+const es = Math.floor(elapsed%60).toString().padStart(2,'0');
+
+let finalExp = 0;
+let title, msg;
+
+if (died) {
+finalExp = p.minSurvived;
+title = 'GESCHEITERT';
+msg = `Du hast den Kampf verloren. ${p.minSurvived} EP für überlebte Minuten bleiben erhalten. Die gesammelten EP verfallen.`;
+document.getElementById('end-title').className = 'end-title defeat';
+playSound('defeat');
+} else if (won) {
+finalExp = p.exp;
+title = 'QUEST ERFÜLLT';
+msg = `Du hast bewiesen, dass du existierst. ${p.killCount} Organismus(en) eliminiert. EP behalten.`;
+document.getElementById('end-title').className = 'end-title victory';
+playSound('victory');
+} else {
+finalExp = p.minSurvived;
+title = 'KEIN KILL';
+msg = `Du hast überlebt — aber bewiesen hast du nichts. Nur Minuten-EP bleiben.`;
+document.getElementById('end-title').className = 'end-title defeat';
+playSound('defeat');
+}
+
+document.getElementById('end-title').textContent = title;
+document.getElementById('end-exp').textContent = finalExp;
+document.getElementById('end-kills').textContent = p.killCount;
+document.getElementById('end-survived').textContent = `${em}:${es}`;
+document.getElementById('end-msg').textContent = msg;
+
+setTimeout(() => showScreen('endscreen'), 400);
+}
+</script>
+</body>
+</html>
